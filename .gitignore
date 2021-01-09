@@ -1,0 +1,9 @@
+*.out
+*.pyc
+*/__pycache__
+logs/
+*.pt
+data/
+*.tar.gz
+extra/
+tiny-imagenet-200.zip
