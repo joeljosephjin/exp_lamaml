@@ -1,0 +1,12 @@
+Traceback (most recent call last):
+  File "mainwb.py", line 239, in <module>
+    main()
+  File "mainwb.py", line 232, in main
+    model, loader, args)
+  File "mainwb.py", line 125, in life_experience
+    loss = model.observe(Variable(v_x), Variable(v_y), task_info["task"])
+  File "/notebooks/exp_lamaml/model/lamaml.py", line 113, in observe
+    meta_loss, logits = self.meta_loss(bx, fast_weights, by, t)
+  File "/notebooks/exp_lamaml/model/lamaml.py", line 35, in meta_loss
+    loss_q = self.loss(logits.squeeze(1), y)
+KeyboardInterrupt
