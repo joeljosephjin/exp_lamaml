@@ -14,6 +14,8 @@ from utils import misc_utils
 from main_multi_task import life_experience_iid, eval_iid_tasks
 import wandb
 
+
+
 # eval_class_tasks(model, tasks, args) : returns lists of avg losses after passing thru model
 # eval_tasks(model, tasks, args) : ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 # life_experience(model, inc_loader, args) : 
@@ -21,6 +23,26 @@ import wandb
 
 # def main():
 # if __name__=...
+
+# returns list of avg loss of each task
+def eval_class_tasks(model, tasks, args):
+    # model.eval turns off dropouts, batchnorms. https://stackoverflow.com/questions/60018578/what-does-model-eval-do-in-pytorch
+    model.eval()
+    result = []
+    # for {0,1,2..} and task_loader? from tasks
+    for t, task_loader in enumerate(tasks):
+        rt = 0
+        # for 
+        for x, y in task_loader:
+            # cuda-ize x if necessary
+            if args.cuda: x = x.cuda()
+            # push x thru model and get p out
+            _, p = torch.max(model(x, t).data.cpu(), 1, keepdim=False)
+            # rt is the loss/error . its being compared with label y
+            rt += (p == y).float().sum()
+        # append average loss into result list
+        result.append(rt / len(task_loader.dataset))
+    return result
 
 # returns lists of avg loss
 def eval_tasks(model, tasks, args):
@@ -194,6 +216,7 @@ def main():
     Model = importlib.import_module('model.' + args.model)
     # create the model neural net
     model = Model.Net(n_inputs, n_outputs, n_tasks, args)
+    
     # make model cuda-ized if possible
     if args.cuda:
         try: model.net.cuda()            

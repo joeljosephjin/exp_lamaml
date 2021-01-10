@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "mainwb.py", line 246, in <module>
+    main()
+  File "mainwb.py", line 239, in main
+    model, loader, args)
+  File "mainwb.py", line 129, in life_experience
+    loss = model.observe(Variable(v_x), Variable(v_y), task_info["task"])
+  File "/notebooks/exp_lamaml/model/lamaml.py", line 73, in observe
+    model = model.clone()
+UnboundLocalError: local variable 'model' referenced before assignment
