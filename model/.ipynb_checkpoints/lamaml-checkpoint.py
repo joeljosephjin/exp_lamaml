@@ -16,9 +16,6 @@ class Net(BaseNet):
         super(Net, self).__init__(n_inputs, n_outputs, n_tasks, args)
 
         self.nc_per_task = n_outputs
-        self.meta_lr = 0.001
-        self.adapt_lr = 0.001
-        self.alpha_lr = 0.001
 
     # trivial forward
     def forward(self, x, t):
@@ -79,7 +76,7 @@ class Net(BaseNet):
         # initialize for training, make use of batch norms, dropouts,etc..
         self.net.train()
         
-        opt = torch.optim.Adam(self.net.parameters())
+        opt = torch.optim.Adam(self.net.parameters(), lr=0.001)
 
         # glances??
         for pass_itr in range(self.glances):

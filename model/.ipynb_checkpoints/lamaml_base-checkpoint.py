@@ -30,7 +30,7 @@ class BaseNet(torch.nn.Module):
                                                 dataset = args.dataset, args=args)
 
         self.net = Learner.Learner(config, args)
-        self.net = l2l.algorithms.MetaSGD(self.net)
+        self.net = l2l.algorithms.MetaSGD(self.net, lr=0.001)
 
         # define the lr params
         self.net.define_task_lr_params(alpha_init = args.alpha_init)
