@@ -16,6 +16,8 @@ import wandb
 
 import lamaml as Model
 
+import dataloader as Loader
+
 
 # returns lists of avg loss
 def eval_tasks(model, tasks, args):
@@ -167,13 +169,13 @@ def main():
     args = parser.parse_args()
 
     # initialize seeds
-    misc_utils.init_seed(args.seed)
+    utils.init_seed(args.seed)
 
     # set up loader
     # 2 options: class_incremental and task_incremental
     # experiments in the paper only use task_incremental
 #     Loader = importlib.import_module('dataloaders.' + args.loader)
-    Loader = importlib.import_module(args.loader)
+#     Loader = importlib.import_module(args.loader)
     
     # print('loader stuff', args)
     loader = Loader.IncrementalLoader(args, seed=args.seed)
@@ -182,8 +184,8 @@ def main():
 
     # setup logging
     # logging is from 'misc_utils.py' from 'utils' folder
-    timestamp = misc_utils.get_date_time() # this line is redundant bcz log_dir already takes care of it
-    args.log_dir, args.tf_dir = misc_utils.log_dir(args, timestamp) # stores args into "training_parameters.json"
+    timestamp = utils.get_date_time() # this line is redundant bcz log_dir already takes care of it
+    args.log_dir, args.tf_dir = utils.log_dir(args, timestamp) # stores args into "training_parameters.json"
 
     # create the model neural net
     model = Model.Net(n_inputs, n_outputs, n_tasks, args)
