@@ -85,10 +85,3 @@ def _get_dataset(dataset_name):
     elif dataset_name == "tinyimagenet": return iImgnet
     else: raise NotImplementedError("Unknown dataset {}.".format(dataset_name))
 
-# a class created for nothing ??
-# contains {base_dataset, train_transforms, common_transforms, class_order}
-class DataHandler:
-    base_dataset = None
-    train_transforms = []
-    common_transforms = [transforms.ToTensor()]
-    class_order = None
