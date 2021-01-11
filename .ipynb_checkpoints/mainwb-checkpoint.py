@@ -13,7 +13,7 @@ from metrics import confusion_matrix
 import misc_utils
 import wandb
 
-import model.lamaml as Model
+import lamaml as Model
 
 
 # returns lists of avg loss

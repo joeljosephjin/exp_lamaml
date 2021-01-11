@@ -9,8 +9,8 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 
-import model.meta.learner as Learner
-import model.meta.modelfactory as mf
+import model.learner as Learner
+import model.modelfactory as mf
 from scipy.stats import pearsonr
 import datetime
 
