@@ -11,7 +11,7 @@ from torch.autograd import Variable
 import parser as file_parser
 from metrics.metrics import confusion_matrix
 from utils import misc_utils
-from main_multi_task import life_experience_iid, eval_iid_tasks
+# from main_multi_task import life_experience_iid, eval_iid_tasks
 import wandb
 
 
@@ -225,17 +225,17 @@ def main():
     # wandb.watch(model)
 
     # run model on loader
-    if args.model == "iid2":
-        # oracle baseline with all task data shown at same time
-        result_val_t, result_val_a, result_test_t, result_test_a, spent_time = life_experience_iid(
-            model, loader, args)
-    else:
-        # for all the CL baselines
-        result_val_t, result_val_a, result_test_t, result_test_a, spent_time = life_experience(
-            model, loader, args)
+#     if args.model == "iid2":
+#         # oracle baseline with all task data shown at same time
+#         result_val_t, result_val_a, result_test_t, result_test_a, spent_time = life_experience_iid(
+#             model, loader, args)
+#     else:
+    # for all the CL baselines
+    result_val_t, result_val_a, result_test_t, result_test_a, spent_time = life_experience(
+        model, loader, args)
 
-        # save results in files or print on terminal
-        save_results(args, result_val_t, result_val_a, result_test_t, result_test_a, model, spent_time)
+    # save results in files or print on terminal
+    save_results(args, result_val_t, result_val_a, result_test_t, result_test_a, model, spent_time)
 
 
 if __name__ == "__main__":
