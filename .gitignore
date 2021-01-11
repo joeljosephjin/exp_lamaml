@@ -8,3 +8,4 @@ data/
 extra/
 tiny-imagenet-200.zip
 wandb/
+.ipynb_checkpoints/
