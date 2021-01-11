@@ -2,10 +2,29 @@ import numpy as np
 import torch
 from PIL import Image
 from torch.utils.data import DataLoader
-from torchvision import datasets
+from torchvision import datasets, transforms
 
-from dataloaders.idataset import DummyArrayDataset
+# from dataloaders.idataset import DummyArrayDataset
 import os
+
+
+# creating a custom dataset AGAIN, but this time the most simple
+# has funcns for length and get_item - extremely simplistic and straightforward
+class DummyArrayDataset(torch.utils.data.Dataset):
+
+    # no transforms or supers or array-izers - just simple
+    def __init__(self, x, y):
+        self.x, self.y = x, y
+
+    # usual stuff, getting the width
+    def __len__(self):
+        return self.x.shape[0]
+
+    # simple return the idx-th item. [no transforms, no array-izing or supers]
+    def __getitem__(self, idx):
+        x, y = self.x[idx], self.y[idx]
+
+        return x, y
 
 
 class IncrementalLoader:

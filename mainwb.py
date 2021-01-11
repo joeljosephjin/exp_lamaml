@@ -199,7 +199,8 @@ def main():
     # set up loader
     # 2 options: class_incremental and task_incremental
     # experiments in the paper only use task_incremental
-    Loader = importlib.import_module('dataloaders.' + args.loader)
+#     Loader = importlib.import_module('dataloaders.' + args.loader)
+    Loader = importlib.import_module(args.loader)
     
     # args.loader='task_incremental_loader'
     # print('loader stuff', args)
@@ -222,14 +223,6 @@ def main():
         try: model.net.cuda()            
         except: pass 
 
-    # wandb.watch(model)
-
-    # run model on loader
-#     if args.model == "iid2":
-#         # oracle baseline with all task data shown at same time
-#         result_val_t, result_val_a, result_test_t, result_test_a, spent_time = life_experience_iid(
-#             model, loader, args)
-#     else:
     # for all the CL baselines
     result_val_t, result_val_a, result_test_t, result_test_a, spent_time = life_experience(
         model, loader, args)
