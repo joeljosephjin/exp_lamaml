@@ -8,9 +8,10 @@ import os
 
 import torch
 from torch.autograd import Variable
-import parser as file_parser
-from metrics import confusion_matrix
-import misc_utils
+# import parser as file_parser
+import utils
+from utils import get_parser
+from utils import confusion_matrix
 import wandb
 
 import lamaml as Model
@@ -160,7 +161,7 @@ def save_results(args, result_val_t, result_val_a, result_test_t, result_test_a,
 
 def main():
     # loads a lot of default parser values from the 'parser' file
-    parser = file_parser.get_parser()
+    parser = get_parser()
 
     # get args from parser as an object
     args = parser.parse_args()
