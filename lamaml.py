@@ -51,7 +51,6 @@ class Net(torch.nn.Module):
 
         # setup losses
         self.loss = torch.nn.CrossEntropyLoss()
-        self.is_cifar = ((args.dataset == 'cifar100') or (args.dataset == 'tinyimagenet'))
         self.glances = args.glances
         self.pass_itr = 0
         self.real_epoch = 0
@@ -73,38 +72,6 @@ class Net(torch.nn.Module):
         # push x thru model and get y_pred
         output = self.net.forward(x)
         return output
-
-    # get loss and y_pred normally
-    def meta_loss(self, x, fast_weights, y, t):
-        """
-        differentiate the loss through the network updates wrt alpha
-        """
-        # simply pushing the x forward thru the net
-        # fast_weights doesn't seem to be getting used
-        logits = self.net.forward(x, fast_weights)
-        # get loss as usual
-        loss_q = self.loss(logits.squeeze(1), y)
-        # return the loss and the output y_pred
-        return loss_q, logits
-
-    # return an update of the fast weights
-    def inner_update(self, x, model_clone, y, t):
-        """
-        Update the fast weights using the current samples and return the updated fast
-        """
-        # same usual finding y_pred
-#         logits = self.net.forward(x, fast_weights)
-        logits = model_clone(x)
-        # same usual finding loss without squeezing (i wonder why?)
-#         loss = self.loss(logits, y)
-        loss = self.loss(logits, y)
-
-        # NOTE if we want higher order grads to be allowed, change create_graph=False to True
-        graph_required = self.args.second_order
-        
-        model_clone.adapt(loss)        
-        
-        return model_clone
 
     # idk??
     def observe(self, x, y, t):
@@ -140,7 +107,7 @@ class Net(torch.nn.Module):
             # will want to store batch loss in a list
             meta_losses = [0 for _ in range(batch_sz)] 
 
-            # b_lisst <= {x,y,t} + sample(Memory)
+            # b_list <= {x,y,t} + sample(Memory)
             bx, by, bt = self.getBatch(x.cpu().numpy(), y.cpu().numpy(), t)
             fast_weights = None
             
@@ -149,14 +116,14 @@ class Net(torch.nn.Module):
                 # squeeze the tuples
                 batch_x, batch_y = x[i].unsqueeze(0), y[i].unsqueeze(0)
                 
-                # do an inner update
-                model_clone = self.inner_update(batch_x, model_clone, batch_y, t)
+                # INNER UPDATE
+                loss = self.loss(model_clone(x), y)
+                model_clone.adapt(loss)
 
                 # if real_epoch is zero, push the tuple to memory
                 if(self.real_epoch == 0): self.push_to_mem(batch_x, batch_y, torch.tensor(t))
 
                 # get meta_loss and y_pred
-#                 meta_loss, logits = self.meta_loss(bx, fast_weights, by, t)
                 meta_loss = self.loss(model_clone(bx), by)
                 # collect meta_losses into a list
                 meta_losses[i] += meta_loss
