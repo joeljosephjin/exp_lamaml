@@ -9,8 +9,6 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 
-import model.learner as Learner
-import model.modelfactory as mf
 from scipy.stats import pearsonr
 import datetime
 
@@ -23,23 +21,27 @@ import learn2learn as l2l
 class Net(torch.nn.Module):
 
     def __init__(self, n_inputs, n_outputs, n_tasks, args):
-#         super(Net, self).__init__(n_inputs, n_outputs, n_tasks, args)
         super(Net, self).__init__()
 
         self.args = args
         nl, nh = args.n_layers, args.n_hiddens
 
-        config = mf.ModelFactory.get_model(model_type = args.arch, sizes = [n_inputs] + [nh] * nl + [n_outputs],
-                                                dataset = args.dataset, args=args)
+        self.net = torch.nn.Sequential(
+            torch.nn.Linear(784, 100),
+            torch.nn.ReLU(),
+            torch.nn.Linear(100, 100),
+            torch.nn.ReLU(),
+            torch.nn.Linear(100, 10)
+            )
+        
+        def init_weights(m):
+            if type(m) == nn.Linear:
+                torch.nn.init.kaiming_normal_(m.weight)
+                m.bias.data.fill_(0.0)
+                
+        self.net.apply(init_weights)
 
-        self.net = Learner.Learner(config, args)
         self.net = l2l.algorithms.MetaSGD(self.net, lr=0.001)
-
-        # define the lr params
-        self.net.define_task_lr_params(alpha_init = args.alpha_init)
-
-        self.opt_wt = torch.optim.SGD(list(self.net.parameters()), lr=args.opt_wt)     
-        self.opt_lr = torch.optim.SGD(list(self.net.alpha_lr.parameters()), lr=args.opt_lr) 
 
         self.epoch = 0
         # allocate buffer
@@ -172,15 +174,11 @@ class Net(torch.nn.Module):
                     
             # set zero_grad for net and alpha learning rate
             self.net.zero_grad()
-            self.net.alpha_lr.zero_grad()
 
         return meta_loss.item()
     
     def zero_grads(self):
-        if self.args.learn_lr: self.opt_lr.zero_grad()
-        self.opt_wt.zero_grad()
         self.net.zero_grad()
-        self.net.alpha_lr.zero_grad()
         
     def push_to_mem(self, batch_x, batch_y, t):
         """

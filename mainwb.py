@@ -3,12 +3,9 @@ import datetime
 import argparse
 import time
 import os
-# import ipdb
-# from tqdm import tqdm
 
 import torch
 from torch.autograd import Variable
-# import parser as file_parser
 import utils
 from utils import get_parser
 from utils import confusion_matrix
@@ -55,19 +52,14 @@ def eval_tasks(model, tasks, args):
 def life_experience(model, inc_loader, args):
     wandb.init(project="exp_lamaml", entity="joeljosephjin")
 
-    result_val_a = []
-    result_test_a = []
-
-    result_val_t = []
-    result_test_t = []
+    result_val_a, result_test_a = [], []
+    result_val_t, result_test_t = [], []
 
     time_start = time.time()
     test_tasks = inc_loader.get_tasks("test")
     val_tasks = inc_loader.get_tasks("val")
     
     evaluator = eval_tasks
-    if args.loader == "class_incremental_loader":
-        evaluator = eval_class_tasks
 
     # for no. of tasks
     # print(inc_loader.n_tasks)
@@ -79,7 +71,6 @@ def life_experience(model, inc_loader, args):
 
             model.real_epoch = ep
 
-            # prog_bar = tqdm(train_loader)
             prog_bar = train_loader
             # for each data tuple {x,y}
             for (i, (x, y)) in enumerate(prog_bar):
@@ -96,7 +87,6 @@ def life_experience(model, inc_loader, args):
                 # cuda-ize the x and y
                 if args.cuda: v_x, v_y = v_x.cuda(), v_y.cuda()
 
-                # init training session
                 model.train()
 
                 loss = model.observe(Variable(v_x), Variable(v_y), task_info["task"])
@@ -105,15 +95,6 @@ def life_experience(model, inc_loader, args):
                  "Loss": round(loss, 3),
                  "Total Acc": round(sum(result_val_a[-1]).item()/len(result_val_a[-1]), 5),
                   "Curr Task Acc": round(result_val_a[-1][task_info["task"]].item(), 5)})
-
-                # prog_bar.set_description(
-                #     "Task: {} | Epoch: {}/{} | Iter: {} | Loss: {} | Acc: Total: {} Current Task: {} ".format(
-                #         task_info["task"], ep+1, args.n_epochs, i%(1000*args.n_epochs), round(loss, 3),
-                #         round(sum(result_val_a[-1]).item()/len(result_val_a[-1]), 5), round(result_val_a[-1][task_info["task"]].item(), 5)
-                #     )
-                # )
-
-        # torch.save(model.state_dict(), os.path.join(wandb.run.dir, 'model.pt'))
 
         result_val_a.append(evaluator(model, val_tasks, args))
         result_val_t.append(task_info["task"])
@@ -171,12 +152,6 @@ def main():
     # initialize seeds
     utils.init_seed(args.seed)
 
-    # set up loader
-    # 2 options: class_incremental and task_incremental
-    # experiments in the paper only use task_incremental
-#     Loader = importlib.import_module('dataloaders.' + args.loader)
-#     Loader = importlib.import_module(args.loader)
-    
     # print('loader stuff', args)
     loader = Loader.IncrementalLoader(args, seed=args.seed)
     # print('loader stuff after after', args)
