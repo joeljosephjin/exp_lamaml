@@ -40,7 +40,7 @@ def eval_tasks(model, tasks, args):
 
             # cuda-ize xb if necessary
             if args.cuda: xb = xb.cuda()
-            _, pb = torch.max(model(xb, t).data.cpu(), 1, keepdim=False)
+            _, pb = torch.max(model(xb).data.cpu(), 1, keepdim=False)
             # adding the loss each time to rt
             rt += (pb == yb).float().sum()
         # average loss of each task added to result list
@@ -62,22 +62,19 @@ def life_experience(model, inc_loader, args):
     
     evaluator = eval_tasks
 
-    # for no. of tasks
-    # print(inc_loader.n_tasks)
     for task_i in range(inc_loader.n_tasks):
-        # initialize new task
+        
         task_info, train_loader, _, _ = inc_loader.new_task()
-        # for no. of epochs
+        
         for ep in range(args.n_epochs):
 
             model.real_epoch = ep
 
             prog_bar = train_loader
-            # for each data tuple {x,y}
+            
             for (i, (x, y)) in enumerate(prog_bar):
 
                 if((i % args.log_every) == 0):
-                    # get accuracy by evaluating on validation data ??
                     result_val_a.append(evaluator(model, val_tasks, args))
                     result_val_t.append(task_info["task"])
 
@@ -91,7 +88,6 @@ def life_experience(model, inc_loader, args):
 
                 opt = torch.optim.Adam(model.net.parameters(), lr=0.001)
 
-                # glances??
                 for pass_itr in range(model.glances):
                     model_clone = model.net.clone()
                     # pass_itr is to be used in other funcs(of this class) ig
@@ -113,15 +109,14 @@ def life_experience(model, inc_loader, args):
 
                     # get batch_size from the shape of v_x
                     batch_sz = v_x.shape[0]
-                    # will want to store batch loss in a list
+                    
                     meta_losses = [0 for _ in range(batch_sz)] 
 
                     # b_lisst <= {v_x,v_y,t} + sample(Memory)
                     bx, by, bt = model.getBatch(v_x.cpu().numpy(), v_y.cpu().numpy(), t)
 
-                    # for each tuple in batch
                     for i in range(batch_sz):
-                        # squeeze the tuples
+                        
                         batch_x, batch_y = v_x[i].unsqueeze(0), v_y[i].unsqueeze(0)
 
                         # do an inner update
@@ -133,6 +128,7 @@ def life_experience(model, inc_loader, args):
 
                         # get meta_loss and y_pred
                         meta_loss = model.loss(model_clone(bx), by)
+                        
                         # collect meta_losses into a list
                         meta_losses[i] += meta_loss
 

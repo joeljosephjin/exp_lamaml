@@ -69,7 +69,7 @@ class Net(torch.nn.Module):
         self.nc_per_task = n_outputs
 
     # trivial forward
-    def forward(self, x, t):
+    def forward(self, x):
         # push x thru model and get y_pred
         output = self.net.forward(x)
         return output
