@@ -7,8 +7,7 @@ import os
 import torch
 from torch.autograd import Variable
 import utils
-from utils import get_parser
-from utils import confusion_matrix
+from utils import get_parser, confusion_matrix, save_results
 import wandb
 
 import lamaml as Model
@@ -19,7 +18,7 @@ import dataloader as Loader
 def eval_tasks(model, tasks, args):
     model.eval()
     result = []
-    # for each task
+    
     for i, task in enumerate(tasks):
 
         t = i
@@ -58,7 +57,6 @@ def life_experience(model, inc_loader, args):
     val_tasks = inc_loader.get_tasks("val")
     
     evaluator = eval_tasks
-#     lossfn = torch.nn.CrossEntropyLoss()
 
     for task_i in range(inc_loader.n_tasks):
         
@@ -68,9 +66,9 @@ def life_experience(model, inc_loader, args):
 
             model.real_epoch = ep
 
-            prog_bar = train_loader
+            # print(len(train_loader)) # 100
             
-            for (i, (x, y)) in enumerate(prog_bar):
+            for (i, (x, y)) in enumerate(train_loader):
 
                 if((i % args.log_every) == 0):
                     result_val_a.append(evaluator(model, val_tasks, args))
@@ -82,51 +80,43 @@ def life_experience(model, inc_loader, args):
 
                 #OBSERVE
                 t = task_info["task"]
-                model.net.train()
-
-                opt = torch.optim.Adam(model.net.parameters(), lr=0.001)
-
+                
                 for pass_itr in range(model.glances):
                     model_clone = model.net.clone()
-                    # pass_itr is to be used in other funcs(of this class) ig
                     model.pass_itr = pass_itr
 
-                    # Returns a random permutation of integers from 0 to n - 1
-                    perm = torch.randperm(x.size(0))
-                    # selecting a random data tuple (x, y)
-                    x, y = x[perm], y[perm]
+                    # shuffle x,y randomly
+                    perm = torch.randperm(x.size(0)); x, y = x[perm], y[perm]
 
-                    # so each it of this loop is an epoch
                     model.epoch += 1
 
-                    # current_task=??
                     if t != model.current_task:
-                        # M=??
                         model.M = model.M_new
                         model.current_task = t
 
-                    # get batch_size from the shape of x
                     batch_sz = x.shape[0]
+                    # print('batch sz', batch_sz) # 10
                     
                     meta_losses = [0 for _ in range(batch_sz)] 
 
-                    # b_lisst <= {x,y,t} + sample(Memory)
-                    bx, by, bt = model.getBatch(x.cpu().numpy(), y.cpu().numpy(), t)
+                    # b_list <= {x,y,t} + sample(Memory)
+                    bx, by, bt = model.getBatch(x, y, t)
 
                     for i in range(batch_sz):
                         
-                        batch_x, batch_y = x[i].unsqueeze(0), y[i].unsqueeze(0)
+                        x_i, y_i = x[i].unsqueeze(0), y[i].unsqueeze(0) # x_i.shape = (1, 784)
+                        
+                        # print('batch shape', batch_x.shape) # [1, 784]
 
                         # do an inner update
-                        loss = model.loss(model_clone(batch_x), batch_y)
+                        loss = model.loss(model_clone(x_i), y_i)
                         model_clone.adapt(loss)
 
                         # if real_epoch is zero, push the tuple to memory
-                        if(model.real_epoch == 0): model.push_to_mem(batch_x, batch_y, torch.tensor(t))
+                        if(model.real_epoch == 0): model.push_to_mem(x_i, y_i, torch.tensor(t))
 
-                        # get meta_loss and y_pred
+                        # get meta_loss
                         meta_loss = model.loss(model_clone(bx), by)
-#                         meta_loss = lossfn(model_clone(bx), by)
                         
                         # collect meta_losses into a list
                         meta_losses[i] += meta_loss
@@ -137,7 +127,7 @@ def life_experience(model, inc_loader, args):
                     # do bkwrd
                     model.net.zero_grad()
                     meta_loss.backward()
-                    opt.step()
+                    model.opt.step()
 
                 wandb.log({"Task": task_info["task"], "Epoch": ep+1/args.n_epochs, "Iter": i%(1000*args.n_epochs),
                  "Loss": round(meta_loss.item(), 3),
@@ -154,26 +144,6 @@ def life_experience(model, inc_loader, args):
     time_spent = time_end - time_start
     return torch.Tensor(result_val_t), torch.Tensor(result_val_a), torch.Tensor(result_test_t), torch.Tensor(result_test_a), time_spent
 
-def save_results(args, result_val_t, result_val_a, result_test_t, result_test_a, model, spent_time):
-    fname = os.path.join(args.log_dir, 'results')
-
-    # save confusion matrix and print one line of stats
-    val_stats = confusion_matrix(result_val_t, result_val_a, args.log_dir, 'results.txt')
-
-    wandb.log({"result_val_t":result_val_t, "result_val_a":result_val_a, "result_test_t":result_test_t, "result_test_a":result_test_a})
-    wandb.save(fname+'.txt')
-    
-    one_liner = str(vars(args)) + ' # val: '
-    one_liner += ' '.join(["%.3f" % stat for stat in val_stats])
-
-    wandb.save(fname+'.txt')
-
-    print(fname + ': ' + one_liner + ' # ' + str(spent_time))
-
-    # save all results in binary file
-    torch.save((result_val_t, result_val_a, model.state_dict(),
-                val_stats, one_liner, args), fname + '.pt')
-    return val_stats, test_stats
 
 def main():
     # loads a lot of default parser values from the 'parser' file
@@ -203,8 +173,7 @@ def main():
     model.net.to(args.device)            
 
     # for all the CL baselines
-    result_val_t, result_val_a, result_test_t, result_test_a, spent_time = life_experience(
-        model, loader, args)
+    result_val_t, result_val_a, result_test_t, result_test_a, spent_time = life_experience(model, loader, args)
 
     # save results in files or print on terminal
     save_results(args, result_val_t, result_val_a, result_test_t, result_test_a, model, spent_time)

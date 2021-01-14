@@ -14,6 +14,29 @@ import matplotlib.pyplot as plt
 import argparse
 
 
+####################################SAVE_RESULTS###########################################
+def save_results(args, result_val_t, result_val_a, result_test_t, result_test_a, model, spent_time):
+    fname = os.path.join(args.log_dir, 'results')
+
+    # save confusion matrix and print one line of stats
+    val_stats = confusion_matrix(result_val_t, result_val_a, args.log_dir, 'results.txt')
+
+    wandb.log({"result_val_t":result_val_t, "result_val_a":result_val_a, "result_test_t":result_test_t, "result_test_a":result_test_a})
+    wandb.save(fname+'.txt')
+    
+    one_liner = str(vars(args)) + ' # val: '
+    one_liner += ' '.join(["%.3f" % stat for stat in val_stats])
+
+    wandb.save(fname+'.txt')
+
+    print(fname + ': ' + one_liner + ' # ' + str(spent_time))
+
+    # save all results in binary file
+    torch.save((result_val_t, result_val_a, model.state_dict(),
+                val_stats, one_liner, args), fname + '.pt')
+    return val_stats, test_stats
+
+
 ####################################METRICS.PY#############################################
 def task_changes(result_t):
     n_tasks = int(result_t.max() + 1)

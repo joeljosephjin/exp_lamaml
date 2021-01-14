@@ -42,6 +42,7 @@ class Net(torch.nn.Module):
         self.net.apply(init_weights)
 
         self.net = l2l.algorithms.MetaSGD(self.net, lr=0.001)
+        self.opt = torch.optim.Adam(self.net.parameters(), lr=0.001)
 
         self.epoch = 0
         # allocate buffer
@@ -101,7 +102,7 @@ class Net(torch.nn.Module):
         where old data is sampled from the memory buffer
         """
         # numpy-ize the data{x,y,t}
-        if x is not None: mxi, myi, mti = np.array(x), np.array(y), np.ones(x.shape[0], dtype=int)*t
+        if x is not None: mxi, myi, mti = np.array(x.cpu()), np.array(y.cpu()), np.ones(x.shape[0], dtype=int)*t
         # if no data, then create empty numpy array
         else: mxi, myi, mti = np.empty( shape=(0, 0) ), np.empty( shape=(0, 0) ), np.empty( shape=(0, 0) )
 
@@ -135,23 +136,15 @@ class Net(torch.nn.Module):
                 bys.append(yi)
                 bts.append(ti)
 
-        # b_lists <= add_to <= m_lists
-        for j in range(len(myi)):
-            bxs.append(mxi[j])
-            bys.append(myi[j])
-            bts.append(mti[j])
+        bxs.extend(mxi)
+        bys.extend(myi)
+        bts.extend(mti)
 
         # b_lists <= torch-ize
-        bxs = Variable(torch.from_numpy(np.array(bxs))).float() 
-        bys = Variable(torch.from_numpy(np.array(bys))).long().view(-1)
-        bts = Variable(torch.from_numpy(np.array(bts))).long().view(-1)
+        bxs = torch.from_numpy(np.array(bxs)).float().to(self.args.device)
+        bys = torch.from_numpy(np.array(bys)).long().view(-1).to(self.args.device)
+        bts = torch.from_numpy(np.array(bts)).long().view(-1).to(self.args.device)
         
-        # b_lists <= cuda-ize
-        if self.cuda:
-            bxs = bxs.cuda()
-            bys = bys.cuda()
-            bts = bts.cuda()
-
         return bxs,bys,bts
 
     def compute_offsets(self, task):
