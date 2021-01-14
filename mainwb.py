@@ -80,16 +80,11 @@ def life_experience(model, inc_loader, args):
                     result_val_a.append(evaluator(model, val_tasks, args))
                     result_val_t.append(task_info["task"])
 
-                # v_x/y <= x/y
-                v_x, v_y = x, y
-                # linearize the x i.e. image => list
-                if args.arch == 'linear': v_x = x.view(x.size(0), -1)
-                # cuda-ize the x and y
-                if args.cuda: v_x, v_y = v_x.cuda(), v_y.cuda()
+                v_x, v_y = x.view(x.size(0), -1).to(args.device), y.to(args.device)
 
                 model.train()
 
-                loss = model.observe(Variable(v_x), Variable(v_y), task_info["task"])
+                loss = model.observe(v_x, v_y, task_info["task"])
 
                 wandb.log({"Task": task_info["task"], "Epoch": ep+1/args.n_epochs, "Iter": i%(1000*args.n_epochs),
                  "Loss": round(loss, 3),
@@ -99,18 +94,8 @@ def life_experience(model, inc_loader, args):
         result_val_a.append(evaluator(model, val_tasks, args))
         result_val_t.append(task_info["task"])
 
-        if args.calc_test_accuracy:
-            result_test_a.append(evaluator(model, test_tasks, args))
-            result_test_t.append(task_info["task"])
-
-
     print("####Final Validation Accuracy####")
     print("Final Results:- \n Total Accuracy: {} \n Individual Accuracy: {}".format(sum(result_val_a[-1])/len(result_val_a[-1]), result_val_a[-1]))
-
-    if args.calc_test_accuracy:
-        print("####Final Test Accuracy####")
-        print("Final Results:- \n Total Accuracy: {} \n Individual Accuracy: {}".format(sum(result_test_a[-1])/len(result_test_a[-1]), result_test_a[-1]))
-
 
     time_end = time.time()
     time_spent = time_end - time_start
@@ -128,11 +113,6 @@ def save_results(args, result_val_t, result_val_a, result_test_t, result_test_a,
     one_liner = str(vars(args)) + ' # val: '
     one_liner += ' '.join(["%.3f" % stat for stat in val_stats])
 
-    test_stats = 0
-    if args.calc_test_accuracy:
-        test_stats = confusion_matrix(result_test_t, result_test_a, args.log_dir, 'results.txt')
-        one_liner += ' # test: ' +  ' '.join(["%.3f" % stat for stat in test_stats])
-
     wandb.save(fname+'.txt')
 
     print(fname + ': ' + one_liner + ' # ' + str(spent_time))
@@ -148,6 +128,7 @@ def main():
 
     # get args from parser as an object
     args = parser.parse_args()
+    args.device = 'cuda' if args.cuda else 'cpu'
 
     # initialize seeds
     utils.init_seed(args.seed)
@@ -166,9 +147,7 @@ def main():
     model = Model.Net(n_inputs, n_outputs, n_tasks, args)
     
     # make model cuda-ized if possible
-    if args.cuda:
-        try: model.net.cuda()            
-        except: pass 
+    model.net.to(args.device)            
 
     # for all the CL baselines
     result_val_t, result_val_a, result_test_t, result_test_a, spent_time = life_experience(

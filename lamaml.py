@@ -74,22 +74,7 @@ class Net(torch.nn.Module):
         output = self.net.forward(x)
         return output
 
-    # get loss and y_pred normally
-    def meta_loss(self, x, fast_weights, y, t):
-        """
-        differentiate the loss through the network updates wrt alpha
-        """
-        # simply pushing the x forward thru the net
-        # fast_weights doesn't seem to be getting used
-        logits = self.net.forward(x, fast_weights)
-        # get loss as usual
-        loss_q = self.loss(logits.squeeze(1), y)
-        # return the loss and the output y_pred
-        return loss_q, logits
-
-    # idk??
     def observe(self, x, y, t):
-        # initialize for training, make use of batch norms, dropouts,etc..
         self.net.train()
         
         opt = torch.optim.Adam(self.net.parameters(), lr=0.001)
@@ -144,14 +129,11 @@ class Net(torch.nn.Module):
             meta_loss = sum(meta_losses)/len(meta_losses)
 
             # do bkwrd
-            self.zero_grads()
+            self.net.zero_grad()
             meta_loss.backward()
             opt.step()
                     
         return meta_loss.item()
-    
-    def zero_grads(self):
-        self.net.zero_grad()
         
     def push_to_mem(self, batch_x, batch_y, t):
         """
