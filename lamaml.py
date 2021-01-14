@@ -87,25 +87,6 @@ class Net(torch.nn.Module):
         # return the loss and the output y_pred
         return loss_q, logits
 
-    # return an update of the fast weights
-    def inner_update(self, x, model_clone, y, t):
-        """
-        Update the fast weights using the current samples and return the updated fast
-        """
-        # same usual finding y_pred
-#         logits = self.net.forward(x, fast_weights)
-        logits = model_clone(x)
-        # same usual finding loss without squeezing (i wonder why?)
-#         loss = self.loss(logits, y)
-        loss = self.loss(logits, y)
-
-        # NOTE if we want higher order grads to be allowed, change create_graph=False to True
-        graph_required = self.args.second_order
-        
-        model_clone.adapt(loss)        
-        
-        return model_clone
-
     # idk??
     def observe(self, x, y, t):
         # initialize for training, make use of batch norms, dropouts,etc..
@@ -126,8 +107,6 @@ class Net(torch.nn.Module):
             
             # so each it of this loop is an epoch
             self.epoch += 1
-            # set {opt_lr, opt_wt, net, net.alpha_lr} (all 4) as zero_grads
-            self.zero_grads()
 
             # current_task=??
             if t != self.current_task:
@@ -150,31 +129,25 @@ class Net(torch.nn.Module):
                 batch_x, batch_y = x[i].unsqueeze(0), y[i].unsqueeze(0)
                 
                 # do an inner update
-                model_clone = self.inner_update(batch_x, model_clone, batch_y, t)
+                loss = self.loss(model_clone(batch_x), batch_y)
+                model_clone.adapt(loss)
 
                 # if real_epoch is zero, push the tuple to memory
                 if(self.real_epoch == 0): self.push_to_mem(batch_x, batch_y, torch.tensor(t))
 
                 # get meta_loss and y_pred
-#                 meta_loss, logits = self.meta_loss(bx, fast_weights, by, t)
                 meta_loss = self.loss(model_clone(bx), by)
                 # collect meta_losses into a list
                 meta_losses[i] += meta_loss
     
-            # Taking the meta gradient step (will update the learning rates)
-            self.zero_grads()
-
             # get avg of the meta_losses
             meta_loss = sum(meta_losses)/len(meta_losses)
 
             # do bkwrd
+            self.zero_grads()
             meta_loss.backward()
-    
             opt.step()
                     
-            # set zero_grad for net and alpha learning rate
-            self.net.zero_grad()
-
         return meta_loss.item()
     
     def zero_grads(self):
