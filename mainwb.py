@@ -99,8 +99,18 @@ def life_experience(model, inc_loader, args):
         result_val_a.append(evaluator(model, val_tasks, args))
         result_val_t.append(task_info["task"])
 
+        if args.calc_test_accuracy:
+            result_test_a.append(evaluator(model, test_tasks, args))
+            result_test_t.append(task_info["task"])
+
+
     print("####Final Validation Accuracy####")
     print("Final Results:- \n Total Accuracy: {} \n Individual Accuracy: {}".format(sum(result_val_a[-1])/len(result_val_a[-1]), result_val_a[-1]))
+
+    if args.calc_test_accuracy:
+        print("####Final Test Accuracy####")
+        print("Final Results:- \n Total Accuracy: {} \n Individual Accuracy: {}".format(sum(result_test_a[-1])/len(result_test_a[-1]), result_test_a[-1]))
+
 
     time_end = time.time()
     time_spent = time_end - time_start
