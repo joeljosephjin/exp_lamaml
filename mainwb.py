@@ -16,9 +16,7 @@ import lamaml as Model
 import dataloader as Loader
 
 
-# returns lists of avg loss
 def eval_tasks(model, tasks, args):
-    # prep for eval
     model.eval()
     result = []
     # for each task
@@ -38,18 +36,17 @@ def eval_tasks(model, tasks, args):
             else: 
                 xb, yb = x[b_from:b_to], y[b_from:b_to]
 
-            # cuda-ize xb if necessary
-            if args.cuda: xb = xb.cuda()
+            xb = xb.to(args.device)
+            
             _, pb = torch.max(model(xb).data.cpu(), 1, keepdim=False)
-            # adding the loss each time to rt
+            # adding the accuracy each time to rt
             rt += (pb == yb).float().sum()
-        # average loss of each task added to result list
+        # average accuracy on all tasks added to result list
         result.append(rt / x.size(0))
 
     return result
 
 
-# for lamaml and everything except iid
 def life_experience(model, inc_loader, args):
     wandb.init(project="exp_lamaml", entity="joeljosephjin")
 
@@ -61,6 +58,7 @@ def life_experience(model, inc_loader, args):
     val_tasks = inc_loader.get_tasks("val")
     
     evaluator = eval_tasks
+#     lossfn = torch.nn.CrossEntropyLoss()
 
     for task_i in range(inc_loader.n_tasks):
         
@@ -78,7 +76,7 @@ def life_experience(model, inc_loader, args):
                     result_val_a.append(evaluator(model, val_tasks, args))
                     result_val_t.append(task_info["task"])
 
-                v_x, v_y = x.view(x.size(0), -1).to(args.device), y.to(args.device)
+                x, y = x.view(x.size(0), -1).to(args.device), y.to(args.device)
 
                 model.train()
 
@@ -94,9 +92,9 @@ def life_experience(model, inc_loader, args):
                     model.pass_itr = pass_itr
 
                     # Returns a random permutation of integers from 0 to n - 1
-                    perm = torch.randperm(v_x.size(0))
-                    # selecting a random data tuple (v_x, v_y)
-                    v_x, v_y = v_x[perm], v_y[perm]
+                    perm = torch.randperm(x.size(0))
+                    # selecting a random data tuple (x, y)
+                    x, y = x[perm], y[perm]
 
                     # so each it of this loop is an epoch
                     model.epoch += 1
@@ -107,17 +105,17 @@ def life_experience(model, inc_loader, args):
                         model.M = model.M_new
                         model.current_task = t
 
-                    # get batch_size from the shape of v_x
-                    batch_sz = v_x.shape[0]
+                    # get batch_size from the shape of x
+                    batch_sz = x.shape[0]
                     
                     meta_losses = [0 for _ in range(batch_sz)] 
 
-                    # b_lisst <= {v_x,v_y,t} + sample(Memory)
-                    bx, by, bt = model.getBatch(v_x.cpu().numpy(), v_y.cpu().numpy(), t)
+                    # b_lisst <= {x,y,t} + sample(Memory)
+                    bx, by, bt = model.getBatch(x.cpu().numpy(), y.cpu().numpy(), t)
 
                     for i in range(batch_sz):
                         
-                        batch_x, batch_y = v_x[i].unsqueeze(0), v_y[i].unsqueeze(0)
+                        batch_x, batch_y = x[i].unsqueeze(0), y[i].unsqueeze(0)
 
                         # do an inner update
                         loss = model.loss(model_clone(batch_x), batch_y)
@@ -128,6 +126,7 @@ def life_experience(model, inc_loader, args):
 
                         # get meta_loss and y_pred
                         meta_loss = model.loss(model_clone(bx), by)
+#                         meta_loss = lossfn(model_clone(bx), by)
                         
                         # collect meta_losses into a list
                         meta_losses[i] += meta_loss
