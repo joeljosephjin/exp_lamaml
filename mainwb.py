@@ -48,6 +48,7 @@ def eval_tasks(model, tasks, args):
 
     return result
 
+
 # for lamaml and everything except iid
 def life_experience(model, inc_loader, args):
     wandb.init(project="exp_lamaml", entity="joeljosephjin")
@@ -84,10 +85,67 @@ def life_experience(model, inc_loader, args):
 
                 model.train()
 
-                loss = model.observe(v_x, v_y, task_info["task"])
+                #OBSERVE
+                t = task_info["task"]
+                model.net.train()
+
+                opt = torch.optim.Adam(model.net.parameters(), lr=0.001)
+
+                # glances??
+                for pass_itr in range(model.glances):
+                    model_clone = model.net.clone()
+                    # pass_itr is to be used in other funcs(of this class) ig
+                    model.pass_itr = pass_itr
+
+                    # Returns a random permutation of integers from 0 to n - 1
+                    perm = torch.randperm(v_x.size(0))
+                    # selecting a random data tuple (v_x, v_y)
+                    v_x, v_y = v_x[perm], v_y[perm]
+
+                    # so each it of this loop is an epoch
+                    model.epoch += 1
+
+                    # current_task=??
+                    if t != model.current_task:
+                        # M=??
+                        model.M = model.M_new
+                        model.current_task = t
+
+                    # get batch_size from the shape of v_x
+                    batch_sz = v_x.shape[0]
+                    # will want to store batch loss in a list
+                    meta_losses = [0 for _ in range(batch_sz)] 
+
+                    # b_lisst <= {v_x,v_y,t} + sample(Memory)
+                    bx, by, bt = model.getBatch(v_x.cpu().numpy(), v_y.cpu().numpy(), t)
+
+                    # for each tuple in batch
+                    for i in range(batch_sz):
+                        # squeeze the tuples
+                        batch_x, batch_y = v_x[i].unsqueeze(0), v_y[i].unsqueeze(0)
+
+                        # do an inner update
+                        loss = model.loss(model_clone(batch_x), batch_y)
+                        model_clone.adapt(loss)
+
+                        # if real_epoch is zero, push the tuple to memory
+                        if(model.real_epoch == 0): model.push_to_mem(batch_x, batch_y, torch.tensor(t))
+
+                        # get meta_loss and y_pred
+                        meta_loss = model.loss(model_clone(bx), by)
+                        # collect meta_losses into a list
+                        meta_losses[i] += meta_loss
+
+                    # get avg of the meta_losses
+                    meta_loss = sum(meta_losses)/len(meta_losses)
+
+                    # do bkwrd
+                    model.net.zero_grad()
+                    meta_loss.backward()
+                    opt.step()
 
                 wandb.log({"Task": task_info["task"], "Epoch": ep+1/args.n_epochs, "Iter": i%(1000*args.n_epochs),
-                 "Loss": round(loss, 3),
+                 "Loss": round(meta_loss.item(), 3),
                  "Total Acc": round(sum(result_val_a[-1]).item()/len(result_val_a[-1]), 5),
                   "Curr Task Acc": round(result_val_a[-1][task_info["task"]].item(), 5)})
 

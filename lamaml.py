@@ -73,67 +73,6 @@ class Net(torch.nn.Module):
         # push x thru model and get y_pred
         output = self.net.forward(x)
         return output
-
-    def observe(self, x, y, t):
-        self.net.train()
-        
-        opt = torch.optim.Adam(self.net.parameters(), lr=0.001)
-
-        # glances??
-        for pass_itr in range(self.glances):
-            model_clone = self.net.clone()
-            # pass_itr is to be used in other funcs(of this class) ig
-            self.pass_itr = pass_itr
-            
-            # Returns a random permutation of integers from 0 to n - 1
-            perm = torch.randperm(x.size(0))
-            # selecting a random data tuple (x, y)
-            x, y = x[perm], y[perm]
-            
-            # so each it of this loop is an epoch
-            self.epoch += 1
-
-            # current_task=??
-            if t != self.current_task:
-                # M=??
-                self.M = self.M_new
-                self.current_task = t
-
-            # get batch_size from the shape of x
-            batch_sz = x.shape[0]
-            # will want to store batch loss in a list
-            meta_losses = [0 for _ in range(batch_sz)] 
-
-            # b_lisst <= {x,y,t} + sample(Memory)
-            bx, by, bt = self.getBatch(x.cpu().numpy(), y.cpu().numpy(), t)
-            fast_weights = None
-            
-            # for each tuple in batch
-            for i in range(batch_sz):
-                # squeeze the tuples
-                batch_x, batch_y = x[i].unsqueeze(0), y[i].unsqueeze(0)
-                
-                # do an inner update
-                loss = self.loss(model_clone(batch_x), batch_y)
-                model_clone.adapt(loss)
-
-                # if real_epoch is zero, push the tuple to memory
-                if(self.real_epoch == 0): self.push_to_mem(batch_x, batch_y, torch.tensor(t))
-
-                # get meta_loss and y_pred
-                meta_loss = self.loss(model_clone(bx), by)
-                # collect meta_losses into a list
-                meta_losses[i] += meta_loss
-    
-            # get avg of the meta_losses
-            meta_loss = sum(meta_losses)/len(meta_losses)
-
-            # do bkwrd
-            self.net.zero_grad()
-            meta_loss.backward()
-            opt.step()
-                    
-        return meta_loss.item()
         
     def push_to_mem(self, batch_x, batch_y, t):
         """
