@@ -118,7 +118,7 @@ def maybe_download_and_extract(url, download_dir):
 
 def get_mnist_data(url, data_dir):
     print("Downloading {} into {}".format(url, data_dir))
-    download.maybe_download_and_extract(url, data_dir)
+    maybe_download_and_extract(url, data_dir)
 
 def get_datasets():
     parser = argparse.ArgumentParser()
