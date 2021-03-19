@@ -12,6 +12,7 @@ import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 
 import argparse
+import wandb
 
 
 ####################################SAVE_RESULTS###########################################
