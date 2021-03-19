@@ -20,7 +20,7 @@ import learn2learn as l2l
 # BaseNet comes from "lamaml_base.py" 
 class Net(torch.nn.Module):
 
-    def __init__(self, n_inputs, n_outputs, n_tasks, args):
+    def __init__(self, n_inputs, n_outputs, n_tasks, args, innerlr=0.001, outerlr=0.001):
         super(Net, self).__init__()
 
         self.args = args
@@ -41,8 +41,8 @@ class Net(torch.nn.Module):
                 
         self.net.apply(init_weights)
 
-        self.net = l2l.algorithms.MetaSGD(self.net, lr=0.001)
-        self.opt = torch.optim.Adam(self.net.parameters(), lr=0.001)
+        self.net = l2l.algorithms.MetaSGD(self.net, lr=innerlr)
+        self.opt = torch.optim.Adam(self.net.parameters(), lr=outerlr)
 
         self.epoch = 0
         # allocate buffer
