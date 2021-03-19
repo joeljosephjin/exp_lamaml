@@ -167,7 +167,7 @@ def main():
     args.log_dir, args.tf_dir = utils.log_dir(args, timestamp) # stores args into "training_parameters.json"
 
     # create the model neural net
-    model = Model.Net(n_inputs, n_outputs, n_tasks, args)
+    model = Model.Net(n_inputs, n_outputs, n_tasks, args, innerlr=args.opt_lr, outerlr=args.alpha_init)
     
     # make model cuda-ized if possible
     model.net.to(args.device)            
